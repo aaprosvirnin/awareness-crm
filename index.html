@@ -262,6 +262,7 @@ const F={
   deals:{nw:'Новая сделка',ed:'Сделка',fields:[
     ['title','Название','text',{req:1,wide:1}],['clientId','Клиент','client'],['stage','Этап','select',{opts:STAGES}],
     ['eventType','Формат','select',{opts:EVTYPES,empty:1}],['eventDate','Дата мероприятия','date'],
+    ['venue','Площадка','text'],['city','Город','text'],
     ['guests','Гостей','number'],['budget','Бюджет, ₽','number'],['owner','Ответственный','member'],['note','Комментарий','textarea']]},
   events:{nw:'Новое мероприятие',ed:'Мероприятие',fields:[
     ['title','Название','text',{req:1,wide:1}],['clientId','Клиент','client'],['status','Статус','select',{opts:EV_STATUS}],
@@ -407,6 +408,7 @@ funnel(){
         <div class="t">${esc(d.title)}</div>
         <div class="m"><span>${esc(cname(d.clientId))}</span>${d.owner?`<span class="who" title="${esc(d.owner)}">${esc(initials(d.owner))}</span>`:''}</div>
         <div class="m"><span class="num">${rub(d.budget)}</span><span>${d.eventDate?fdate(d.eventDate):'дата ?'}${d.guests?' · '+d.guests+' гост.':''}</span></div>
+        ${d.venue?`<div class="m"><span>${esc(d.venue)}${d.city?', '+esc(d.city):''}</span></div>`:''}
         ${k==='won'?(d.eventId&&byId('events',d.eventId)?`<button class="btn sm" data-act="drawer" data-kind="event" data-id="${d.eventId}">Открыть мероприятие</button>`:`<button class="btn sm pri" data-act="mkEvent" data-id="${d.id}">Создать мероприятие</button>`):''}
       </div>`).join('')}</div>`}).join('')}</div>`;
 },
@@ -549,7 +551,8 @@ function field([k,lab,type,o={}],v){const idf='f-'+k;let inp;
       :type==='event'?S.events.slice().sort(byDate()).map(e=>[e.id,e.title+(e.date?' · '+fdate(e.date):'')]):S.team.map(m=>[m,m]);
     if(type==='member'&&v&&!S.team.includes(v))opts.push([v,v]);
     const empty=(type!=='select'||o.empty)?'<option value="">—</option>':'';
-    inp=`<select id="${idf}" name="${k}">${empty}${opts.map(([a,b])=>`<option value="${esc(a)}" ${String(a)===String(v??'')?'selected':''}>${esc(b)}</option>`).join('')}</select>`;
+    const addNew=type==='client'?'<option value="__new">+ Новый клиент…</option>':'';
+    inp=`<select id="${idf}" name="${k}" ${type==='client'?'data-act-change="newClient"':''}>${empty}${addNew}${opts.map(([a,b])=>`<option value="${esc(a)}" ${String(a)===String(v??'')?'selected':''}>${esc(b)}</option>`).join('')}</select>`;
   }else inp=`<input id="${idf}" name="${k}" type="${type}" value="${esc(v)}" ${o.req?'required':''} ${type==='number'?'inputmode="decimal" step="any" min="0"':''}>`;
   return `<label class="fld ${o.wide||type==='textarea'?'wide':''}"><span>${lab}</span>${inp}</label>`}
 function openForm(col,id,preset={}){const sc=F[col];const cur=id?byId(col,id):preset;if(id&&!cur)return;
@@ -564,7 +567,7 @@ const closeModal=()=>{const m=$('#modal');m.hidden=true;m.innerHTML=''};
 
 const FORMS={
   async entity(f){const col=f.dataset.col,id=f.dataset.id;const fd=new FormData(f);const data={};
-    F[col].fields.forEach(([k,,type])=>{let v=fd.get(k);if(v==null)return;v=String(v).trim();data[k]=type==='number'?(v===''?null:Number(v)):v});
+    F[col].fields.forEach(([k,,type])=>{let v=fd.get(k);if(v==null)return;v=String(v).trim();if(v==='__new')v='';data[k]=type==='number'?(v===''?null:Number(v)):v});
     if(col==='tasks'&&!id)data.done=false;
     if(col==='events'&&!id){data.checklist=CHECKLIST.map(t=>({id:uid(),text:t,done:false}));data.crew=[]}
     const btn=f.querySelector('.btn.pri');btn.disabled=true;
@@ -592,7 +595,7 @@ const FORMS={
 
 async function mkEvent(dealId){const d=byId('deals',dealId);if(!d)return;
   const evId=await create('events',{title:d.title,clientId:d.clientId||'',dealId:d.id,eventType:d.eventType||'',date:d.eventDate||'',guests:d.guests??null,budget:d.budget??null,
-    status:'plan',manager:d.owner||'',venue:'',city:'',note:d.note||'',checklist:CHECKLIST.map(t=>({id:uid(),text:t,done:false})),crew:[]});
+    status:'plan',manager:d.owner||'',venue:d.venue||'',city:d.city||'',note:d.note||'',checklist:CHECKLIST.map(t=>({id:uid(),text:t,done:false})),crew:[]});
   if(!evId)return;
   await patch('deals',d.id,{eventId:evId});
   const b=+d.budget||0;
@@ -654,6 +657,11 @@ document.addEventListener('submit',ev=>{ev.preventDefault();const f=ev.target;FO
 document.addEventListener('input',ev=>{const k=ev.target.dataset?.q;if(k!=null){S.q[k]=ev.target.value;render()}});
 document.addEventListener('change',async ev=>{const a=ev.target.dataset?.actChange;if(!a)return;
   if(a==='taskWho'){S.taskWho=ev.target.value;render()}
+  if(a==='newClient'&&ev.target.value==='__new'){const sel=ev.target;const name=(prompt('Название клиента (компания или ФИО):')||'').trim();
+    if(!name){sel.value='';return}
+    sel.disabled=true;const id=await create('clients',{name,kind:'Компания',contact:'',phone:'',email:'',source:'',note:''});sel.disabled=false;
+    if(!id){sel.value='';return}
+    const o=document.createElement('option');o.value=id;o.textContent=name;sel.appendChild(o);sel.value=id;toast('Клиент «'+name+'» добавлен')}
   if(a==='evStatus')await patch('events',ev.target.dataset.id,{status:ev.target.value})});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){if(!$('#modal').hidden)closeModal();else if(S.drawer){S.drawer=null;renderDrawer()}}
   if(ev.key==='Enter'&&ev.target.classList?.contains('card'))openForm('deals',ev.target.dataset.id)});
