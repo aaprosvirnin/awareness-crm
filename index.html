@@ -3,12 +3,12 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#2F4BD8">
+<meta name="theme-color" content="#312E73">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="AWARENESS">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>AWARENESS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -50,7 +50,7 @@ button{cursor:pointer}
 .app{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:100%}
 .side{background:var(--surface);border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;gap:18px;position:sticky;top:env(safe-area-inset-top,0px);height:100vh}
 .brand{font-family:var(--f-display);font-weight:600;font-size:17px;letter-spacing:-.01em;padding:0 8px;display:flex;align-items:center;gap:10px}
-.brand i{width:22px;height:22px;border-radius:50%;background:conic-gradient(from 200deg,var(--accent),#E0A84A,var(--accent));display:inline-block;flex:none}
+.brand .logo{width:34px;height:34px;border-radius:9px;flex:none;display:block}
 .brand small{display:block;font-family:var(--f-body);font-weight:500;font-size:11px;color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase}
 nav{display:flex;flex-direction:column;gap:2px}
 nav button{display:flex;justify-content:space-between;align-items:center;gap:8px;border:0;background:none;padding:9px 10px;border-radius:8px;color:var(--ink-2);text-align:left;font-weight:500;white-space:nowrap}
@@ -169,6 +169,9 @@ td .sub{display:block;font-size:12px;color:var(--ink-3)}
 .x:hover{background:var(--surface-2);color:var(--bad)}
 .row-form{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .row-form input,.row-form select{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 9px;min-width:0;flex:1 1 120px}
+.mini.pay{grid-template-columns:minmax(0,1fr) auto auto auto;cursor:pointer;border-radius:6px}
+.mini.pay:hover{background:var(--surface-2)}
+.mini.pay .x.armed{background:var(--bad);color:#fff;font-size:12px;padding:3px 8px}
 .mini{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
 .mini:first-of-type{border-top:0}
 .mini .t{font-weight:500}
@@ -229,7 +232,7 @@ td .sub{display:block;font-size:12px;color:var(--ink-3)}
 
 <div class="app">
   <aside class="side">
-    <div class="brand"><i></i><div>AWARENESS<small>CRM ивент-агентства</small></div></div>
+    <div class="brand"><img class="logo" src="icon.svg" alt=""><div>AWARENESS<small>CRM ивент-агентства</small></div></div>
     <nav id="nav"></nav>
     <div class="side-foot" id="sidefoot"></div>
   </aside>
@@ -275,7 +278,7 @@ const F={
   finance:{nw:'Новая операция',ed:'Операция',fields:[
     ['kind','Тип','select',{opts:[['in','Приход'],['out','Расход']]}],['status','Статус','select',{opts:[['plan','Ожидается'],['paid','Оплачено']]}],
     ['eventId','Мероприятие','event',{wide:1}],['category','Статья','select',{opts:FIN_CATS}],['amount','Сумма, ₽','number',{req:1}],
-    ['date','Дата оплаты','date'],['planAmount','План, ₽','number'],['counterparty','Контрагент','text'],['payFrom','Откуда оплачено','text'],['docs','Документы','select',{opts:DOCS,empty:1}],['note','Комментарий','textarea']]},
+    ['date','Дата оплаты','date'],['planAmount','План, ₽','number'],['counterparty','Контрагент','text',{list:'cp-list'}],['payFrom','Откуда оплачено','text'],['docs','Документы','select',{opts:DOCS,empty:1}],['note','Комментарий','textarea']]},
   tasks:{nw:'Новая задача',ed:'Задача',fields:[
     ['title','Что сделать','text',{req:1,wide:1}],['eventId','Мероприятие','event'],['assignee','Исполнитель','member'],['due','Срок','date']]}
 };
@@ -521,9 +524,11 @@ event(e){const c=econ(e.id);const ck=e.checklist||[];const crew=e.crew||[];const
     <form class="row-form" data-form="crewAdd"><select id="crew-c" name="contractorId" required><option value="">Подрядчик…</option>${CATS.map(cat=>{const l=S.contractors.filter(k=>k.category===cat);return l.length?`<optgroup label="${esc(cat)}">${l.map(k=>`<option value="${k.id}">${esc(k.name)}</option>`).join('')}</optgroup>`:''}).join('')}${S.contractors.filter(k=>!CATS.includes(k.category)).map(k=>`<option value="${k.id}">${esc(k.name)}</option>`).join('')}</select>
       <input id="crew-r" name="role" placeholder="Роль / задача">${S.isAdmin?'<input id="crew-cost" name="cost" type="number" inputmode="decimal" placeholder="Стоимость, ₽">':''}<button class="btn sm">Назначить</button></form>
     ${S.isAdmin?'<div class="s" style="font-size:12px;color:var(--ink-3);margin-top:6px">Стоимость сразу попадает в расходы проекта со статусом «Ожидается».</div>':''}</div>
-  ${S.isAdmin?`<div class="sec"><h3>Платежи <span><button class="btn sm" data-act="new" data-col="finance" data-kind="in" data-event="${e.id}">+ Приход</button> <button class="btn sm" data-act="new" data-col="finance" data-kind="out" data-event="${e.id}">+ Расход</button></span></h3>
-    ${ops.map(o=>`<div class="mini"><div><div class="t">${esc(o.category||'')} ${o.counterparty?'· '+esc(o.counterparty):''}</div><div class="s">${fdate(o.date)}${[o.note,o.payFrom,o.docs].filter(Boolean).map(x=>' · '+esc(x)).join('')}${o.planAmount!=null&&o.planAmount!==''?' · план '+rub(o.planAmount):''}</div></div>
-      <span class="num ${o.kind==='in'?'pos':'neg'}">${o.kind==='in'?'+':'−'}${rub(o.amount)}</span><button class="pill ${o.status==='paid'?'paid':'pl'}" data-act="finToggle" data-id="${o.id}">${o.status==='paid'?'Оплачено':'Ожидается'}</button></div>`).join('')||'<div class="s" style="color:var(--ink-3)">Платежей пока нет</div>'}</div>`:''}
+  ${S.isAdmin?[['in','Платежи от клиента','+ Приход'],['out','Платежи подрядчикам и расходы','+ Расход']].map(([kind,title,btn])=>{const list=ops.filter(o=>o.kind===kind);const paid=list.filter(o=>o.status==='paid').reduce((a,o)=>a+(+o.amount||0),0);const all=list.reduce((a,o)=>a+(+o.amount||0),0);
+    return `<div class="sec"><h3>${title} <span class="num" style="text-transform:none;letter-spacing:0">${rub(paid)} из ${rub(all)}</span></h3>
+    ${list.map(o=>`<div class="mini pay" data-act="edit" data-col="finance" data-id="${o.id}" title="Нажмите, чтобы изменить"><div><div class="t">${esc(o.counterparty||o.category||'Без названия')}${o.counterparty&&o.category?` <span class="s">· ${esc(o.category)}</span>`:''}</div><div class="s">${fdate(o.date)}${[o.note,o.payFrom,o.docs].filter(Boolean).map(x=>' · '+esc(x)).join('')}${o.planAmount!=null&&o.planAmount!==''?' · план '+rub(o.planAmount):''}</div></div>
+      <span class="num ${kind==='in'?'pos':'neg'}">${kind==='in'?'+':'−'}${rub(o.amount)}</span><button class="pill ${o.status==='paid'?'paid':'pl'}" data-act="finToggle" data-id="${o.id}" title="Сменить статус">${o.status==='paid'?'Оплачено':'Ожидается'}</button><button class="x" data-act="finDel" data-id="${o.id}" aria-label="Удалить платёж" title="Удалить платёж">×</button></div>`).join('')||`<div class="s" style="color:var(--ink-3)">${kind==='in'?'Платежей от клиента пока нет':'Расходов пока нет'}</div>`}
+    <div class="row-form"><button class="btn sm" data-act="new" data-col="finance" data-kind="${kind}" data-event="${e.id}">${btn}</button></div></div>`}).join(''):''}
   <div class="sec"><h3>Задачи <button class="btn sm" data-act="new" data-col="tasks" data-event="${e.id}">+ Задача</button></h3><div class="list">${tasks.map(taskRow).join('')||'<div class="s" style="color:var(--ink-3)">Задач нет</div>'}</div></div>
   ${e.note?`<div class="sec"><h3>Заметки и тайминг</h3><div class="note">${esc(e.note)}</div></div>`:''}`;
 },
@@ -553,12 +558,12 @@ function field([k,lab,type,o={}],v){const idf='f-'+k;let inp;
     const empty=(type!=='select'||o.empty)?'<option value="">—</option>':'';
     const addNew=type==='client'?'<option value="__new">+ Новый клиент…</option>':'';
     inp=`<select id="${idf}" name="${k}" ${type==='client'?'data-act-change="newClient"':''}>${empty}${addNew}${opts.map(([a,b])=>`<option value="${esc(a)}" ${String(a)===String(v??'')?'selected':''}>${esc(b)}</option>`).join('')}</select>`;
-  }else inp=`<input id="${idf}" name="${k}" type="${type}" value="${esc(v)}" ${o.req?'required':''} ${type==='number'?'inputmode="decimal" step="any" min="0"':''}>`;
+  }else inp=`<input id="${idf}" name="${k}" type="${type}" value="${esc(v)}" ${o.list?`list="${o.list}" autocomplete="off"`:''} ${o.req?'required':''} ${type==='number'?'inputmode="decimal" step="any" min="0"':''}>`;
   return `<label class="fld ${o.wide||type==='textarea'?'wide':''}"><span>${lab}</span>${inp}</label>`}
 function openForm(col,id,preset={}){const sc=F[col];const cur=id?byId(col,id):preset;if(id&&!cur)return;
   const m=$('#modal');m.hidden=false;
   m.innerHTML=`<div class="modal-wrap"><div class="scrim" data-act="closeModal"></div><form class="sheet" data-form="entity" data-col="${col}" data-id="${id||''}">
-    <h3>${id?esc(sc.ed):esc(sc.nw)}</h3><div class="fields">${sc.fields.map(f=>field(f,cur[f[0]])).join('')}</div>
+    <h3>${id?esc(sc.ed):esc(sc.nw)}</h3>${col==='finance'?`<datalist id="cp-list">${[...new Set([...S.contractors.map(c=>c.name),...S.clients.map(c=>c.name)].filter(Boolean))].sort((a,b)=>a.localeCompare(b,'ru')).map(n=>`<option value="${esc(n)}"></option>`).join('')}</datalist>`:''}<div class="fields">${sc.fields.map(f=>field(f,cur[f[0]])).join('')}</div>
     <div class="sheet-foot">${id?`<button type="button" class="btn danger" data-act="del" data-col="${col}" data-id="${id}">Удалить</button>`:'<span></span>'}
     <div><button type="button" class="btn ghost" data-act="closeModal">Отмена</button><button class="btn pri">${id?'Сохранить':'Создать'}</button></div></div></form></div>`;
   setTimeout(()=>m.querySelector('input,select')?.focus(),30);
@@ -630,6 +635,7 @@ document.addEventListener('click',async ev=>{
     case 'evf':S.evFilter=el.dataset.v;render();break;
     case 'ctf':S.ctFilter=el.dataset.v;render();break;
     case 'finf':S[el.dataset.k]=el.dataset.v;render();break;
+    case 'finDel':if(arm(el,'Удалить?')){await remove('finance',id);toast('Платёж удалён')}break;
     case 'finToggle':{const o=byId('finance',id);if(o)await patch('finance',id,{status:o.status==='paid'?'plan':'paid'});break}
     case 'taskDone':{const t=byId('tasks',id);if(t)await patch('tasks',id,{done:!t.done});break}
     case 'ckToggle':{const e=byId('events',S.drawer?.id);if(!e)break;await patch('events',e.id,{checklist:(e.checklist||[]).map(x=>x.id===el.dataset.ck?{...x,done:!x.done}:x)});break}
@@ -677,7 +683,7 @@ document.addEventListener('drop',async ev=>{const col=ev.target.closest?.('.col'
 const CFG=window.AWARENESS||{};
 let channel=null;
 function authScreen(mode,msg=''){const a=$('#auth');a.hidden=false;
-  const brand='<div class="brand"><i></i><div>AWARENESS<small>CRM ивент-агентства</small></div></div>';
+  const brand='<div class="brand"><img class="logo" src="icon.svg" alt=""><div>AWARENESS<small>CRM ивент-агентства</small></div></div>';
   if(mode==='config'){a.innerHTML=`<div class="auth-card">${brand}<p>Приложение ещё не подключено к базе. Впишите адрес проекта Supabase и публичный ключ в файл <b>config.js</b> и загрузите сайт заново.</p></div>`;return}
   if(mode==='lib'){a.innerHTML=`<div class="auth-card">${brand}<p>Не удалось загрузить модуль связи с базой. Проверьте интернет и обновите страницу.</p></div>`;return}
   if(mode==='login')a.innerHTML=`<form class="auth-card" data-auth="login">${brand}<p>Вход для сотрудников</p>
